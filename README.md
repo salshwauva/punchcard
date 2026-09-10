@@ -1,23 +1,26 @@
 # Punchcard
 
-Punchcard records what is on screen every 15 seconds and turns those samples
-into TA work hours. The samples are the ground truth. Sessions, categories and
-the timesheet are derived, and any of them can be thrown away and rebuilt.
+Punchcard is a macOS activity collector. It records the frontmost app and idle
+state to SQLite every 15 seconds, then turns those samples into a report of TA
+work hours, so the hours never need hand timing.
 
 ## How it works
+
+The raw samples are the ground truth. Sessions, categories and the timesheet
+are derived, and any of them rebuilds from the rows.
 
 - `punchcard/collect.py` writes one row per tick: the frontmost app, its bundle
   id, the window title, and seconds since the last input of any kind. It is the
   only writer of the `samples` table. While the display sleeps it writes
   nothing, so a gap forms and the gap rule closes the open session.
 - `punchcard/sessions.py` is a pure function from samples to sessions. Three
-  things end a session: the category changes, the gap to the next sample is
+  things end a session: the category changes, the gap to the next sample runs
   longer than two intervals, or idle time passes the threshold. Idle does not
   end lecture playback, because a lecture is work with no input.
 - `rules.toml` holds every app name, title pattern and threshold. No app name
-  or course number belongs in the Python.
-- Corrections live in their own table. Replay applies them over the rule output,
-  so a hand fix survives a rebuild and never edits a raw sample.
+  or course number lives in the Python.
+- Corrections live in their own table. Replay applies them over the rule
+  output, so a hand fix survives a rebuild and never edits a raw sample.
 
 ## Setup
 
@@ -28,31 +31,34 @@ grant prompt.
     /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 -m venv .venv
     .venv/bin/python -m pip install -e ".[dev]"
 
-## Permissions
+Punchcard needs the Accessibility grant to read window titles. Open System
+Settings, Privacy and Security, Accessibility, then add `.venv/bin/python`.
+Without the grant the collector still runs. It records the app name and the
+idle clock, and it flags every row it writes with `degraded = 1`.
 
-Punchcard needs Accessibility for window titles: System Settings, Privacy and
-Security, Accessibility, add `.venv/bin/python`. Without the grant the collector
-still runs and still records the app name and the idle clock, and every row it
-writes is flagged `degraded = 1`.
-
-## Commands
+## Run
 
     punchcard collect                     # sample until the process stops
     punchcard collect --seconds 30        # sample for 30 seconds, then stop
     punchcard replay --day 2026-04-06     # rebuild that day from samples
 
-To run the collector in the background, copy `contrib/com.sophia.punchcard.plist`
-to `~/Library/LaunchAgents/`, replace `PUNCHCARD_HOME` with the repo path, then
-`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.sophia.punchcard.plist`.
+To run the collector in the background, copy
+`contrib/com.sophia.punchcard.plist` to `~/Library/LaunchAgents/`, replace
+`PUNCHCARD_HOME` with the repo path, then load it:
 
-## Eval
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.sophia.punchcard.plist
 
-`eval/days/` holds eight labeled workdays built by `scripts/gen_days.py` from a
-fixed seed. Each day covers idle periods at the desk, a lunch break, a sleep
-gap where the machine wrote nothing, and lecture playback that has to keep
-counting. The label is the sum of the work segments, which is what a person
-would write on a timesheet, and the sum is spelled out in the `arithmetic`
-field of each day file. Error is engine minutes minus label minutes.
+## Test
+
+    python -m pytest -q
+
+`scripts/eval_days.py` grades the engine against eight labeled workdays.
+`scripts/gen_days.py` builds those days from a fixed seed, apart from the
+engine. Each day covers idle time at the desk, a lunch break, a sleep gap where
+the machine wrote nothing, and lecture playback that has to keep counting. The
+label is the sum of the work segments, which is what a person would write on a
+timesheet, and each day file spells the sum out in its `arithmetic` field.
+Error is engine minutes minus label minutes.
 
     $ python scripts/eval_days.py
     day             label   engine    error
@@ -66,11 +72,12 @@ field of each day file. Error is engine minutes minus label minutes.
     2026-04-15     270.91   271.00    +0.09
     punchcard-eval days=8 mean_abs_error_min=3.01 max_abs_error_min=7.09
 
-Most of what is left is the price of the sample grid plus breaks shorter than
-the five minute idle threshold, which the engine bills and a person would not.
-Raise the threshold to an hour and the mean error goes from 3.01 to 16.90
-minutes, which is the check that the idle rule is carrying its weight.
+## Known limits
 
-## Tests
+Most of the error is the price of the sample grid plus breaks shorter than the
+five minute idle threshold, which the engine counts as work and a person would
+not. Raise the threshold to an hour and the mean error climbs from 3.01 to
+16.90 minutes, which is the check that the idle rule earns its place.
 
-    python -m pytest -q
+Without the Accessibility grant, every row carries `degraded = 1` and no window
+title, so a title rule falls back to the app name alone.
