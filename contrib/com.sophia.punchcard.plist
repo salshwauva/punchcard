@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template. Replace PUNCHCARD_HOME, then copy to
+     ~/Library/LaunchAgents/ and run:
+     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.sophia.punchcard.plist
+     The Accessibility grant attaches to ProgramArguments[0]. Change that path
+     and macOS treats it as a new program with no grant. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sophia.punchcard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>PUNCHCARD_HOME/.venv/bin/python</string>
+        <string>-m</string>
+        <string>punchcard.cli</string>
+        <string>collect</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>PUNCHCARD_HOME</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>StandardOutPath</key>
+    <string>PUNCHCARD_HOME/logs/collect.out</string>
+    <key>StandardErrorPath</key>
+    <string>PUNCHCARD_HOME/logs/collect.err</string>
+</dict>
+</plist>

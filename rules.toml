@@ -1,0 +1,33 @@
+# Classification rules. No app names or course names belong in Python.
+# Order matters: title_any is checked across all categories before app_any,
+# so a lecture playing in Chrome beats the browser rule.
+
+[settings]
+interval_s = 15          # nominal seconds between samples
+idle_threshold_s = 300   # idle above this means away from the desk
+default_category = "other"
+
+[category.code]
+billable = true
+idle_closes = true
+app_any = ["Code", "Visual Studio Code", "PyCharm", "Terminal", "iTerm2", "Xcode"]
+title_any = []
+
+[category.browser]
+billable = true
+idle_closes = true
+app_any = ["Google Chrome", "Safari", "Firefox"]
+title_any = []
+
+# Lecture playback is work with zero input, so idle never closes it.
+[category.lecture]
+billable = true
+idle_closes = false
+app_any = ["QuickTime Player", "VLC"]
+title_any = ["Lecture", "Panopto", "Recitation"]
+
+[category.other]
+billable = false
+idle_closes = true
+app_any = ["Messages", "Music", "Photos", "Mail", "System Settings"]
+title_any = []
