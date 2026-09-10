@@ -1,0 +1,9 @@
+CLAUDE.md
+docs/learning-log.md
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
